@@ -7,7 +7,7 @@ try:
 except:
     have_fof=False
 
-mylib=ctypes.cdll.LoadLibrary("libcorrcal2_funs.so")
+mylib=ctypes.cdll.LoadLibrary("/home/ronniyjoseph/Sync/PhD/Projects/hybrid_calibration/corrcal2/libcorrcal2_funs.so")
 
 sparse_mat_times_vec_c=mylib.sparse_mat_times_vec_wrapper
 sparse_mat_times_vec_c.argtypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_void_p,ctypes.c_int,ctypes.c_void_p,ctypes.c_void_p]
