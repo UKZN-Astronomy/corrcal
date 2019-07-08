@@ -160,7 +160,7 @@ def get_chisq_dense(g,data,noise,sig,ant1,ant2,scale_fac=1.0,normfac=1.0):
     chisq=numpy.sum(data*numpy.asarray(rhs))
     nn=g.size/2
     chisq=chisq+normfac*( (numpy.sum(g[1::2]))**2 + (numpy.sum(g[0::2])-nn)**2)
-    print chisq, numpy.mean(g[0::2]),numpy.mean(g[1::2])
+    print(chisq, numpy.mean(g[0::2]),numpy.mean(g[1::2]))
     return chisq
 def get_gradient_dense(g,data,noise,sig,ant1,ant2,scale_fac=1.0,normfac=1.0):
     do_times=False
@@ -217,7 +217,7 @@ def get_gradient_dense(g,data,noise,sig,ant1,ant2,scale_fac=1.0,normfac=1.0):
 
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
 
     v1_m1r_v2=cgsd*m1r_v2;v1_m1r_v2=v1_m1r_v2[0::2]+v1_m1r_v2[1::2];
     v1_m1i_v2=cgsd*m1i_v2;v1_m1i_v2=v1_m1i_v2[0::2]+v1_m1i_v2[1::2];
@@ -225,7 +225,7 @@ def get_gradient_dense(g,data,noise,sig,ant1,ant2,scale_fac=1.0,normfac=1.0):
     v1_m2i_v2=cgsd*m2i_v2;v1_m2i_v2=v1_m2i_v2[0::2]+v1_m2i_v2[1::2];
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
 
     #print v1_m1r_v2[0:5]
 
@@ -233,7 +233,7 @@ def get_gradient_dense(g,data,noise,sig,ant1,ant2,scale_fac=1.0,normfac=1.0):
     sum_grads_c(grad.ctypes.data,v1_m2r_v2.ctypes.data,v1_m2i_v2.ctypes.data,ant2.ctypes.data,v1_m2i_v2.size)
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
     #chisq=numpy.sum(sd*data)
     #print chisq
 
@@ -258,11 +258,11 @@ def get_chisq(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
     mycov.apply_gains_to_mat(g,ant1,ant2)
     if do_times:
         t2=time.time();
-        print t2-t1    
+        print(t2-t1)
     mycov_inv=mycov.inv()
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
     sd=mycov_inv*data
     chisq=numpy.sum(sd*data)
 
@@ -270,7 +270,7 @@ def get_chisq(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
     chisq=chisq+normfac*( (numpy.sum(g[1::2]))**2 + (numpy.sum(g[0::2])-nn)**2)
     
 
-    print chisq
+    print(chisq)
     return chisq
 
 def get_gradient(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
@@ -282,11 +282,11 @@ def get_gradient(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
     mycov.apply_gains_to_mat(g,ant1,ant2)
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
     mycov_inv=mycov.inv()
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
     sd=mycov_inv*data
     gsd=sd.copy();
     apply_gains_to_mat_c(gsd.ctypes.data,g.ctypes.data,ant2.ctypes.data,ant1.ctypes.data,gsd.size/2,1);
@@ -296,7 +296,7 @@ def get_gradient(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
 
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
 
     nant=numpy.max([numpy.max(ant1),numpy.max(ant2)])+1
     grad=numpy.zeros(2*nant)
@@ -322,7 +322,7 @@ def get_gradient(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
 
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
 
     v1_m1r_v2=cgsd*m1r_v2;v1_m1r_v2=v1_m1r_v2[0::2]+v1_m1r_v2[1::2];
     v1_m1i_v2=cgsd*m1i_v2;v1_m1i_v2=v1_m1i_v2[0::2]+v1_m1i_v2[1::2];
@@ -330,7 +330,7 @@ def get_gradient(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
     v1_m2i_v2=cgsd*m2i_v2;v1_m2i_v2=v1_m2i_v2[0::2]+v1_m2i_v2[1::2];
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
 
     #print v1_m1r_v2[0:5]
 
@@ -338,7 +338,7 @@ def get_gradient(g,data,mat,ant1,ant2,scale_fac=1.0,normfac=1.0):
     sum_grads_c(grad.ctypes.data,v1_m2r_v2.ctypes.data,v1_m2i_v2.ctypes.data,ant2.ctypes.data,v1_m2i_v2.size)
     if do_times:
         t2=time.time();
-        print t2-t1
+        print(t2-t1)
     #chisq=numpy.sum(sd*data)
     #print chisq
 
@@ -395,7 +395,7 @@ def read_sparse(fname):
     crap=numpy.fromfile(f)
     f.close()
     if crap.size>0:
-        print 'file ' + fname + ' had unexpected length.'
+        print('file ' + fname + ' had unexpected length.')
         return
 
     vecs=vecs.reshape([nvec,n])
