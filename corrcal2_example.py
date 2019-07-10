@@ -11,10 +11,10 @@ reload(corrcal2)
 
 #read relevant data.
 mat=corrcal2.read_sparse('signal_sparse2_test.dat')
-f=open('ant1.dat');ant1=numpy.fromfile(f,'int64')-1;f.close()
-f=open('ant2.dat');ant2=numpy.fromfile(f,'int64')-1;f.close()
-f=open('gtmp.dat');gvec=numpy.fromfile(f,'float64');f.close()
-f=open('vis.dat');data=numpy.fromfile(f,'float64');f.close()
+#f=open('ant1.dat');ant1=numpy.fromfile(f,'int64')-1;f.close()
+#f=open('ant2.dat');ant2=numpy.fromfile(f,'int64')-1;f.close()
+#f=open('gtmp.dat');gvec=numpy.fromfile(f,'float64');f.close()
+#f=open('vis.dat');data=numpy.fromfile(f,'float64');f.close()
 
 #if you want to test timings, you can do so here.  Set t_min to some length of 
 #time, and code will see how many gradient operations it can get through 
