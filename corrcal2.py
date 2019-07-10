@@ -1,7 +1,9 @@
+from __future__ import print_function
+
 import numpy
 import ctypes
 import time
-
+from matplotlib import pyplot
 try:
     import pyfof
 
@@ -418,19 +420,19 @@ def read_sparse(fname):
     src = numpy.fromfile(f, 'float64', nsrc * n)
     crap = numpy.fromfile(f)
     f.close()
-
-    print(nsrc)
-    print(nblock)
-    print(nvec)
-    print(lims)
-    print(vecs.shape)
-    print(src.shape)
+    print("n = ",n)
+    print("isinv = ",isinv)
+    print("nsrc = ",nsrc)
+    print("nblock = ",nblock)
+    print("nvec = ",nvec)
+    print("lims shape = ",lims.shape)
 
     if crap.size > 0:
         print('file ' + fname + ' had unexpected length.')
         return
 
     vecs = vecs.reshape([nvec[0], n[0]])
+
     if nsrc > 0:
         src = src.reshape([nsrc[0], n[0]])
 
