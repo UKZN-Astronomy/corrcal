@@ -10,13 +10,13 @@ reload(corrcal2)
 
 
 #read relevant data.
+f=open('ant1.dat');ant1=numpy.fromfile(f,'int64')-1;f.close()
+f=open('ant2.dat');ant2=numpy.fromfile(f,'int64')-1;f.close()
+f=open('gtmp.dat');gvec=numpy.fromfile(f,'float64');f.close()
+f=open('vis.dat');data=numpy.fromfile(f,'float64');f.close()
 mat=corrcal2.read_sparse('signal_sparse2_test.dat')
-#f=open('ant1.dat');ant1=numpy.fromfile(f,'int64')-1;f.close()
-#f=open('ant2.dat');ant2=numpy.fromfile(f,'int64')-1;f.close()
-#f=open('gtmp.dat');gvec=numpy.fromfile(f,'float64');f.close()
-#f=open('vis.dat');data=numpy.fromfile(f,'float64');f.close()
 
-#if you want to test timings, you can do so here.  Set t_min to some length of 
+#if you want to test timings, you can do so here.  Set t_min to some length of
 #time, and code will see how many gradient operations it can get through 
 #during at least t_min seconds
 niter=0;
@@ -46,3 +46,6 @@ asdf=fmin_cg(corrcal2.get_chisq,gvec*fac,corrcal2.get_gradient,(data,mat,ant1,an
 t2=time.time()
 print 'elapsed time to do nonlinear fit for ' + repr(nant) + ' antennas was ' + repr(t2-t1)
 fit_gains=asdf/fac
+plt.plot(data[1::2]**2 + data[::2]**2 )
+plt.show()
+
