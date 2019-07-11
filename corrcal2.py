@@ -3,6 +3,8 @@ from __future__ import print_function
 import numpy
 import ctypes
 import time
+import os
+
 from matplotlib import pyplot
 try:
     import pyfof
