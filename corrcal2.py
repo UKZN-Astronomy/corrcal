@@ -158,7 +158,6 @@ class sparse_2level:
         return myinv
 
     def apply_gains_to_mat(self, g, ant1, ant2):
-
         apply_gains_to_mat_c(self.vecs.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
                              self.vecs.shape[1] / 2, self.vecs.shape[0])
         apply_gains_to_mat_c(self.src.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
@@ -411,32 +410,28 @@ def many_tri_inv(mat):
 
 def read_sparse(fname):
     f = open(fname)
-    n = numpy.fromfile(f, 'int32', 1);
+    n = numpy.fromfile(f, 'int32', 1)[0];
     isinv = (numpy.fromfile(f, 'int32', 1)[0] != 0);
-    nsrc = numpy.fromfile(f, 'int32', 1);
-    nblock = numpy.fromfile(f, 'int32', 1);
-    nvec = numpy.fromfile(f, 'int32', 1);
+    nsrc = numpy.fromfile(f, 'int32', 1)[0];
+    nblock = numpy.fromfile(f, 'int32', 1)[0];
+    nvec = numpy.fromfile(f, 'int32', 1)[0];
     lims = numpy.fromfile(f, 'int32', (nblock + 1))
     diag = numpy.fromfile(f, 'float64', n)
     vecs = numpy.fromfile(f, 'float64', nvec * n)
     src = numpy.fromfile(f, 'float64', nsrc * n)
     crap = numpy.fromfile(f)
     f.close()
-    print("n = ",n)
-    print("isinv = ",isinv)
-    print("nsrc = ",nsrc)
-    print("nblock = ",nblock)
-    print("nvec = ",nvec)
-    print("lims shape = ",lims.shape)
+
+
 
     if crap.size > 0:
         print('file ' + fname + ' had unexpected length.')
         return
 
-    vecs = vecs.reshape([nvec[0], n[0]])
-
+    vecs = vecs.reshape([nvec, n])
+    print(vecs.shape)
     if nsrc > 0:
-        src = src.reshape([nsrc[0], n[0]])
+        src = src.reshape([nsrc, n])
 
     mat = sparse_2level(diag, vecs, src, lims, isinv)
     return mat
