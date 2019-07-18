@@ -120,7 +120,6 @@ void apply_gains_to_mat_dense(double *mat, complex double *gains, long *ant1, lo
 /*--------------------------------------------------------------------------------*/
 void apply_gains_to_mat(complex double *mat, complex double *gains, long *ant1, long *ant2, int n, int nvec)
 {
-
   double complex *gvec=(double complex *)malloc(sizeof(double complex)*n);
   //printf("n,nvec are %d %d\n",n,nvec);
   for (int i=0;i<n;i++) {
