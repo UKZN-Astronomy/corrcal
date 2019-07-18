@@ -147,10 +147,13 @@ class sparse_2level:
                                    self.src[i].ctypes.data, tmp[i].ctypes.data)
 
         small_mat = tmp * self.src.transpose()
+        pyplot.plot(self.src.transpose()[::2]**2  )
+        pyplot.show()
         if self.isinv:
             small_mat = numpy.eye(nsrc) - small_mat
         else:
             small_mat = numpy.eye(nsrc) + small_mat
+
 
         small_mat = numpy.linalg.inv(numpy.linalg.cholesky(small_mat))
         myinv.src = small_mat * tmp
@@ -159,9 +162,9 @@ class sparse_2level:
 
     def apply_gains_to_mat(self, g, ant1, ant2):
         apply_gains_to_mat_c(self.vecs.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             self.vecs.shape[1] / 2, self.vecs.shape[0])
+                             self.vecs.shape[1] // 2, self.vecs.shape[0])
         apply_gains_to_mat_c(self.src.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             self.src.shape[1] / 2, self.src.shape[0])
+                             self.src.shape[1] // 2, self.src.shape[0])
 
 
 def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
@@ -312,7 +315,7 @@ def get_gradient(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
         print(t2 - t1)
     sd = mycov_inv * data
     gsd = sd.copy();
-    apply_gains_to_mat_c(gsd.ctypes.data, g.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, gsd.size / 2, 1);
+    apply_gains_to_mat_c(gsd.ctypes.data, g.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, gsd.size // 2, 1);
     tmp = mat.copy()
     tmp.diag[:] = 0
     cgsd = tmp * gsd
@@ -429,10 +432,8 @@ def read_sparse(fname):
         return
 
     vecs = vecs.reshape([nvec, n])
-    print(vecs.shape)
     if nsrc > 0:
         src = src.reshape([nsrc, n])
-
     mat = sparse_2level(diag, vecs, src, lims, isinv)
     return mat
 
