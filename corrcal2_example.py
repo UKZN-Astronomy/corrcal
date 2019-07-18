@@ -1,6 +1,6 @@
 import numpy, corrcal2, time
 from matplotlib import pyplot as plt
-from importlib import reload
+#from importlib import reload
 reload(corrcal2)
 # You'll need to compile corrcal2_funs.c into a shared library with e.g.
 # gcc-4.9 -fopenmp -std=c99 -O3 -shared -fPIC -o libcorrcal2_funs.so corrcal2_funs.c -lm -lgomp
