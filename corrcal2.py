@@ -1,11 +1,19 @@
 from __future__ import print_function
-
+from cffi import FFI
 import numpy
 import ctypes
 import time
 import os
 
+########### Look into https://cffi.readthedocs.io/en/latest/
+
+
 from matplotlib import pyplot
+
+ffibuilder = FFI()
+
+
+
 try:
     import pyfof
 
@@ -13,55 +21,91 @@ try:
 except:
     have_fof = False
 
-mylib = ctypes.cdll.LoadLibrary("/home/ronniyjoseph/Sync/PhD/Projects/hybrid_calibration/corrcal2/libcorrcal2_funs.so")
+ffibuilder.cdef("""
+struct sparse_2level *fill_struct_sparse(double *diag, double *vecs, double *src, int n, int nvec, int nsrc, int nblock, long *lims, int isinv)
+{
+  struct sparse_2level *mat=(struct sparse_2level *)malloc(sizeof(struct sparse_2level));
+  mat->diag=diag;
+  mat->vecs=vecs;
+  mat->src=src;
+  mat->n=n;
+  mat->nvec=nvec;
+  mat->nsrc=nsrc;
+  mat->nblock=nblock;
+  mat->lims=lims;
+  mat->isinv=isinv;
 
-sparse_mat_times_vec_c = mylib.sparse_mat_times_vec_wrapper
-sparse_mat_times_vec_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
-                                   ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
-                                   ctypes.c_void_p]
 
-make_small_block_c = mylib.make_small_block
-make_small_block_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                               ctypes.c_void_p]
+  return mat;
+};
 
-make_all_small_blocks_c = mylib.make_all_small_blocks
-make_all_small_blocks_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
-                                    ctypes.c_int, ctypes.c_void_p]
-# void make_all_small_blocks(double *diag, double *vecs, long *lims, int nblock, int n, int nsrc, double *out)
+void chol(double *mat, int n);
+void many_chol(double *mat, int n, int nmat);
+void tri_inv(double *mat, double *mat_inv, int n);
+void many_tri_inv(double *mat, double *mat_inv, int n, int nmat);
+void mymatmul(double *a, int stridea, double *b, int strideb, int n, int m, int kk, double *c, int stridec);
+void mult_vecs_by_blocs(double *vecs, double *blocks, int n, int nvec, int nblock, long *edges, double *ans);
+void apply_gains_to_mat_dense(double *mat, complex double *gains, long *ant1, long *ant2, int n, int nvec);
+void apply_gains_to_mat(complex double *mat, complex double *gains, long *ant1, long *ant2, int n, int nvec);
+void sum_grads(double *grad, double *myr, double *myi, long *ant, int n);
+void sparse_mat_times_vec(struct sparse_2level *mat, double *vec, double *ans);
+void sparse_mat_times_vec_wrapper(double *diag, double *vecs, double *src, int n, int nvec, int nsrc, int nblock, long *lims, int isinv, double *vec, double *ans);
+void make_small_block(double *diag, double *vecs, int i1, int i2, int n, int nvec, double *out);
+void make_all_small_blocks(double *diag, double *vecs, long *lims, int nblock, int n, int nvec, double *out);
+void invert_all_small_blocks(double *blocks, int nblock, int nvec, int isinv, double *inv);
+""")
 
-chol_c = mylib.chol
-chol_c.argtypes = [ctypes.c_void_p, ctypes.c_int]
+mylib = ffibuilder.dlopen("/home/ronniyjoseph/Sync/PhD/Projects/hybrid_calibration/corrcal2/libcorrcal2_funs.so")
 
-many_chol_c = mylib.many_chol
-many_chol_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-tri_inv_c = mylib.tri_inv
-tri_inv_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
 
-many_tri_inv_c = mylib.many_tri_inv
-many_tri_inv_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-
-invert_all_small_blocks_c = mylib.invert_all_small_blocks
-invert_all_small_blocks_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
-
-mymatmul_c = mylib.mymatmul
-mymatmul_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                       ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
-
-mult_vecs_by_blocs_c = mylib.mult_vecs_by_blocs
-mult_vecs_by_blocs_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                                 ctypes.c_void_p, ctypes.c_void_p]
-
-apply_gains_to_mat_c = mylib.apply_gains_to_mat
-apply_gains_to_mat_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
-                                 ctypes.c_int]
-
-apply_gains_to_mat_dense_c = mylib.apply_gains_to_mat_dense
-apply_gains_to_mat_dense_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
-                                       ctypes.c_int]
-
-sum_grads_c = mylib.sum_grads
-sum_grads_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+# sparse_mat_times_vec_c = mylib.sparse_mat_times_vec_wrapper
+# sparse_mat_times_vec_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+#                                    ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
+#                                    ctypes.c_void_p]
+#
+# make_small_block_c = mylib.make_small_block
+# make_small_block_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+#                                ctypes.c_void_p]
+#
+# make_all_small_blocks_c = mylib.make_all_small_blocks
+# make_all_small_blocks_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+#                                     ctypes.c_int, ctypes.c_void_p]
+# # void make_all_small_blocks(double *diag, double *vecs, long *lims, int nblock, int n, int nsrc, double *out)
+#
+# chol_c = mylib.chol
+# chol_c.argtypes = [ctypes.c_void_p, ctypes.c_int]
+#
+# many_chol_c = mylib.many_chol
+# many_chol_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+#
+# tri_inv_c = mylib.tri_inv
+# tri_inv_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+#
+# many_tri_inv_c = mylib.many_tri_inv
+# many_tri_inv_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+#
+# invert_all_small_blocks_c = mylib.invert_all_small_blocks
+# invert_all_small_blocks_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+#
+# mymatmul_c = mylib.mymatmul
+# mymatmul_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+#                        ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+#
+# mult_vecs_by_blocs_c = mylib.mult_vecs_by_blocs
+# mult_vecs_by_blocs_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+#                                  ctypes.c_void_p, ctypes.c_void_p]
+#
+# apply_gains_to_mat_c = mylib.apply_gains_to_mat
+# apply_gains_to_mat_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
+#                                  ctypes.c_int]
+#
+# apply_gains_to_mat_dense_c = mylib.apply_gains_to_mat_dense
+# apply_gains_to_mat_dense_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
+#                                        ctypes.c_int]
+#
+# sum_grads_c = mylib.sum_grads
+# sum_grads_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
 
 
 class sparse_2level:
@@ -170,10 +214,19 @@ class sparse_2level:
         return myinv
 
     def apply_gains_to_mat(self, g, ant1, ant2):
+<<<<<<< HEAD
         apply_gains_to_mat_c(self.covariance_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
                              self.covariance_vectors.shape[1] // 2, self.covariance_vectors.shape[0])
         apply_gains_to_mat_c(self.source_model_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
                              self.source_model_vectors.shape[1] // 2, self.source_model_vectors.shape[0])
+=======
+        ant_numbers = self.vecs.shape[1] // 2
+        vec_number = self.vecs.shape[0]
+        mylib.apply_gains_to_mat(self.vecs.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+                             ant_numbers.ctypes.data, vec_number.ctypes.data)
+        apply_gains_to_mat_c(self.src.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+                             ant_numbers.ctypes.data, vec_number.ctypes.data)
+>>>>>>> b117614b7e29d8bb3473256c130c2c92496394ab
 
 
 def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
@@ -292,7 +345,10 @@ def get_chisq(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
     if do_times:
         t1 = time.time()
     mycov = mat.copy()
+
+    # Something is going wrong here due to numpy.array types
     mycov.apply_gains_to_mat(g, ant1, ant2)
+
     if do_times:
         t2 = time.time();
         print(t2 - t1)
@@ -306,7 +362,8 @@ def get_chisq(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
     nn = g.size / 2
     chisq = chisq + normfac * ((numpy.sum(g[1::2])) ** 2 + (numpy.sum(g[0::2]) - nn) ** 2)
 
-    print(chisq)
+    #print(chisq)
+    #print(chisq)
     return chisq
 
 
