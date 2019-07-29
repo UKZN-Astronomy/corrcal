@@ -74,43 +74,38 @@ sum_grads_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctype
 
 
 class sparse_2level:
-    def __init__(self, noise_variance, covariance_vectors, source_model_vectors, redundant_group_edge_indices,
-                 is_inverse=0):
-        self.noise_diagonal = noise_variance.copy()
-        self.covariance_vectors = numpy.matrix(covariance_vectors.copy())
-        self.source_model_vectors = numpy.matrix(source_model_vectors.copy())
-        # We copy the data like this because other the code segfaults, probably something to do with pointers
-        self.redundant_group_edge_indices = numpy.zeros(len(redundant_group_edge_indices), dtype='int64')
-        self.redundant_group_edge_indices[:] = redundant_group_edge_indices.copy()
-        self.is_inverse = is_inverse
-        self.number_of_redundant_blocks = len(redundant_group_edge_indices) - 1
+    def __init__(self, diag, vecs, src, lims, isinv=0):
+        self.diag = diag.copy()
+        self.vecs = numpy.matrix(vecs.copy())
+        self.src = numpy.matrix(src.copy())
+        # self.lims=lims.copy()
+        self.lims = numpy.zeros(len(lims), dtype='int64')
+        self.lims[:] = lims
+        self.isinv = isinv
+        self.nblock = len(lims) - 1
 
     def copy(self):
-        return sparse_2level(self.noise_diagonal, self.covariance_vectors, self.source_model_vectors,
-                             self.redundant_group_edge_indices, self.is_inverse)
+        return sparse_2level(self.diag, self.vecs, self.src, self.lims, self.isinv)
 
     def __mul__(self, vec):
         ans = numpy.zeros(vec.shape)
         # void sparse_mat_times_vec_wrapper(double *diag, double *vecs, double *src, int n, int nvec, int nsrc, int nblock, long *lims, double *vec, double *ans)
-        number_of_measurements = self.noise_diagonal.size
-        number_of_covariance_vectors = self.covariance_vectors.shape[0]
-        number_of_source_vectors = self.source_model_vectors.shape[0]
-        sparse_mat_times_vec_c(self.noise_diagonal.ctypes.data, self.covariance_vectors.ctypes.data,
-                               self.source_model_vectors.ctypes.data, number_of_measurements,
-                               number_of_covariance_vectors, number_of_source_vectors, self.number_of_redundant_blocks,
-                               self.redundant_group_edge_indices.ctypes.data, self.is_inverse, vec.ctypes.data,
-                               ans.ctypes.data)
+        n = self.diag.size
+        nvec = self.vecs.shape[0]
+        nsrc = self.src.shape[0]
+        sparse_mat_times_vec_c(self.diag.ctypes.data, self.vecs.ctypes.data, self.src.ctypes.data, n, nvec, nsrc,
+                               self.nblock, self.lims.ctypes.data, self.isinv, vec.ctypes.data, ans.ctypes.data)
         return ans
 
     def expand(self):
-        m1 = self.source_model_vectors.transpose() * self.source_model_vectors
-        for i in range(0, self.number_of_redundant_blocks):
-            i1 = self.redundant_group_edge_indices[i]
-            i2 = self.redundant_group_edge_indices[i + 1]
-            tmp = self.covariance_vectors[:, i1:i2].transpose() * self.covariance_vectors[:, i1:i2]
+        m1 = self.src.transpose() * self.src
+        for i in range(0, self.nblock):
+            i1 = self.lims[i]
+            i2 = self.lims[i + 1]
+            tmp = self.vecs[:, i1:i2].transpose() * self.vecs[:, i1:i2]
             m1[i1:i2, i1:i2] += tmp
-        mm = numpy.diag(self.noise_diagonal)
-        if (self.is_inverse):
+        mm = numpy.diag(self.diag)
+        if (self.isinv):
             return mm - m1
         else:
             return mm + m1
@@ -119,62 +114,58 @@ class sparse_2level:
 
         t1 = time.time();
         myinv = self.copy()
-        myinv.is_inverse = ~self.is_inverse
-        myinv.noise_diagonal = 1.0 / self.noise_diagonal
-        number_of_covariance_vectors = self.covariance_vectors.shape[0]
-        nn = self.noise_diagonal.size
-        tmp = numpy.zeros([self.number_of_redundant_blocks, number_of_covariance_vectors, number_of_covariance_vectors])
+        myinv.isinv = ~self.isinv
+        myinv.diag = 1.0 / self.diag
+        nvec = self.vecs.shape[0]
+        nn = self.diag.size
+        tmp = numpy.zeros([self.nblock, nvec, nvec])
 
-        make_all_small_blocks_c(self.noise_diagonal.ctypes.data, self.covariance_vectors.ctypes.data, self.redundant_group_edge_indices.ctypes.data, self.number_of_redundant_blocks, nn,
-                                number_of_covariance_vectors, tmp.ctypes.data)
+        make_all_small_blocks_c(self.diag.ctypes.data, self.vecs.ctypes.data, self.lims.ctypes.data, self.nblock, nn,
+                                nvec, tmp.ctypes.data)
 
-        myeye = numpy.repeat([numpy.eye(number_of_covariance_vectors)], self.number_of_redundant_blocks, axis=0);
-        if self.is_inverse:
+        myeye = numpy.repeat([numpy.eye(nvec)], self.nblock, axis=0);
+        if self.isinv:
             tmp2 = myeye - tmp
         else:
             tmp2 = myeye + tmp
-        many_chol_c(tmp2.ctypes.data, number_of_covariance_vectors, self.number_of_redundant_blocks)
+        many_chol_c(tmp2.ctypes.data, nvec, self.nblock)
         tmp3 = many_tri_inv(tmp2)
-        tmp4 = mult_vecs_by_blocks(self.covariance_vectors, tmp3, self.redundant_group_edge_indices)
+        tmp4 = mult_vecs_by_blocks(self.vecs, tmp3, self.lims)
 
         for i in range(tmp4.shape[0]):
-            tmp4[i, :] = tmp4[i, :] * myinv.noise_diagonal
+            tmp4[i, :] = tmp4[i, :] * myinv.diag
         # return tmp4
         # invert_all_small_blocks_c(tmp.ctypes.data,self.nblock,nvec,numpy.int(self.isinv),tmp2.ctypes.data)
         t2 = time.time()
         # print 'took ' + repr(t2-t1) + ' seconds to do inverse.'
 
         # return tmp,tmp3,tmp4
-        myinv.covariance_vectors[:] = tmp4
+        myinv.vecs[:] = tmp4
 
-        number_of_sources = self.source_model_vectors.shape[0]
-        tmp = 0 * self.source_model_vectors
-
-        number_of_measurements = self.noise_diagonal.size
-        number_of_covariance_vectors = self.covariance_vectors.shape[0]
-        number_redundant_blocks = self.number_of_redundant_blocks
-
-        pointer_noise_diagonal = myinv.noise_diagonal.ctypes.data
-        pointer_source_models = myinv.source_model_vectors.ctypes.data
-        pointer_covariance_vectors = myinv.covariance_vectors.ctypes.data
-
+        nsrc = self.src.shape[0]
+        tmp = 0 * self.src
+        n = self.diag.size
+        nvec = self.vecs.shape[0]
+        nblock = self.lims.size - 1
+        dptr = myinv.diag.ctypes.data
+        sptr = myinv.src.ctypes.data
+        vptr = myinv.vecs.ctypes.data
         # we can do the block multiply simply by sending in 0 for nsrc
+        for i in range(nsrc):
+            sparse_mat_times_vec_c(dptr, vptr, sptr, n, nvec, 0, nblock, self.lims.ctypes.data, myinv.isinv,
+                                   self.src[i].ctypes.data, tmp[i].ctypes.data)
 
-        for i in range(number_of_sources):
-            sparse_mat_times_vec_c(pointer_noise_diagonal, pointer_covariance_vectors, pointer_source_models,
-                                   number_of_measurements, number_of_covariance_vectors, 0, number_redundant_blocks,
-                                   self.redundant_group_edge_indices.ctypes.data, myinv.is_inverse,
-                                   self.source_model_vectors[i].ctypes.data, tmp[i].ctypes.data)
-
-        small_mat = tmp * self.source_model_vectors.transpose()
-        if self.is_inverse:
-            small_mat = numpy.eye(number_of_sources) - small_mat
+        small_mat = tmp * self.src.transpose()
+        pyplot.plot(self.src.transpose()[::2]**2  )
+        pyplot.show()
+        if self.isinv:
+            small_mat = numpy.eye(nsrc) - small_mat
         else:
-            small_mat = numpy.eye(number_of_sources) + small_mat
+            small_mat = numpy.eye(nsrc) + small_mat
 
 
         small_mat = numpy.linalg.inv(numpy.linalg.cholesky(small_mat))
-        myinv.source_model_vectors = small_mat * tmp
+        myinv.src = small_mat * tmp
 
         return myinv
 
@@ -183,12 +174,8 @@ class sparse_2level:
                              self.covariance_vectors.shape[1] // 2, self.covariance_vectors.shape[0])
         apply_gains_to_mat_c(self.source_model_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
                              self.source_model_vectors.shape[1] // 2, self.source_model_vectors.shape[0])
-        ant_numbers = self.vecs.shape[1] // 2
-        vec_number = self.vecs.shape[0]
-        mylib.apply_gains_to_mat(self.vecs.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             ant_numbers.ctypes.data, vec_number.ctypes.data)
-        apply_gains_to_mat_c(self.src.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             ant_numbers.ctypes.data, vec_number.ctypes.data)
+
+        return
 
 
 def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
@@ -217,8 +204,6 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0)
 def get_gradient_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
     do_times = False
     g = g / scale_fac
-
-
     cov = sig.copy()
     n = sig.shape[0]
     apply_gains_to_mat_c(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
@@ -329,15 +314,13 @@ def get_chisq(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
     return chisq
 
 
-def get_gradient(gain_vector, visibility_data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
-    print(visibility_data.shape)
-
-    gain_vector = gain_vector / scale_fac
+def get_gradient(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
+    g = g / scale_fac
     do_times = False
     if do_times:
         t1 = time.time()
     mycov = mat.copy()
-    mycov.apply_gains_to_mat(gain_vector, ant1, ant2)
+    mycov.apply_gains_to_mat(g, ant1, ant2)
     if do_times:
         t2 = time.time();
         print(t2 - t1)
@@ -345,11 +328,11 @@ def get_gradient(gain_vector, visibility_data, mat, ant1, ant2, scale_fac=1.0, n
     if do_times:
         t2 = time.time();
         print(t2 - t1)
-    sd = mycov_inv * visibility_data
+    sd = mycov_inv * data
     gsd = sd.copy();
-    apply_gains_to_mat_c(gsd.ctypes.data, gain_vector.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, gsd.size // 2, 1);
+    apply_gains_to_mat_c(gsd.ctypes.data, g.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, gsd.size // 2, 1);
     tmp = mat.copy()
-    tmp.noise_diagonal[:] = 0
+    tmp.diag[:] = 0
     cgsd = tmp * gsd
 
     if do_times:
@@ -359,10 +342,10 @@ def get_gradient(gain_vector, visibility_data, mat, ant1, ant2, scale_fac=1.0, n
     nant = numpy.max([numpy.max(ant1), numpy.max(ant2)]) + 1
     grad = numpy.zeros(2 * nant)
 
-    r1 = gain_vector[2 * ant1]
-    r2 = gain_vector[2 * ant2]
-    i1 = gain_vector[2 * ant1 + 1]
-    i2 = gain_vector[2 * ant2 + 1]
+    r1 = g[2 * ant1]
+    r2 = g[2 * ant2]
+    i1 = g[2 * ant1 + 1]
+    i2 = g[2 * ant2 + 1]
     m1r_v2 = 0 * cgsd
     m1i_v2 = 0 * cgsd
     m2r_v2 = 0 * cgsd
@@ -403,9 +386,9 @@ def get_gradient(gain_vector, visibility_data, mat, ant1, ant2, scale_fac=1.0, n
     # chisq=numpy.sum(sd*data)
     # print chisq
 
-    nn = gain_vector.size / 2.0
-    grad_real = 2 * (numpy.sum(gain_vector[0::2]) - nn) / nn
-    grad_im = 2 * numpy.sum(gain_vector[1::2])
+    nn = g.size / 2.0
+    grad_real = 2 * (numpy.sum(g[0::2]) - nn) / nn
+    grad_im = 2 * numpy.sum(g[1::2])
     return -2 * grad / scale_fac + normfac * (grad_real + grad_im) / scale_fac
     # return -2*grad/scale_fac
 
