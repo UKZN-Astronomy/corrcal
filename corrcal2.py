@@ -170,10 +170,10 @@ class sparse_2level:
         return myinv
 
     def apply_gains_to_mat(self, g, ant1, ant2):
-        apply_gains_to_mat_c(self.covariance_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             self.covariance_vectors.shape[1] // 2, self.covariance_vectors.shape[0])
-        apply_gains_to_mat_c(self.source_model_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             self.source_model_vectors.shape[1] // 2, self.source_model_vectors.shape[0])
+        apply_gains_to_mat_c(self.vecs.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+                             self.vecs.shape[1] // 2, self.vecs.shape[0])
+        apply_gains_to_mat_c(self.src.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+                             self.src.shape[1] // 2, self.src.shape[0])
 
         return
 
