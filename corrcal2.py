@@ -24,10 +24,10 @@ mylib = ctypes.cdll.LoadLibrary("/home/ronniyjoseph/Sync/PhD/Projects/hybrid_cal
 
 
 
-sparse_mat_times_vec_c = mylib.sparse_mat_times_vec_wrapper
-sparse_mat_times_vec_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
-                                   ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
-                                   ctypes.c_void_p]
+sparse_matrix_vector_multiplication = mylib.sparse_mat_times_vec_wrapper
+sparse_matrix_vector_multiplication.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+                                                ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
+                                                ctypes.c_void_p]
 
 make_small_block_c = mylib.make_small_block
 make_small_block_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
@@ -38,11 +38,11 @@ make_all_small_blocks_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_v
                                     ctypes.c_int, ctypes.c_void_p]
 # void make_all_small_blocks(double *diag, double *vecs, long *lims, int nblock, int n, int nsrc, double *out)
 
-chol_c = mylib.chol
-chol_c.argtypes = [ctypes.c_void_p, ctypes.c_int]
+cholesky_factorization = mylib.chol
+cholesky_factorization.argtypes = [ctypes.c_void_p, ctypes.c_int]
 
-many_chol_c = mylib.many_chol
-many_chol_c.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+cholesky_factorization_parallel = mylib.many_chol
+cholesky_factorization_parallel.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
 tri_inv_c = mylib.tri_inv
 tri_inv_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
@@ -61,9 +61,9 @@ mult_vecs_by_blocs_c = mylib.mult_vecs_by_blocs
 mult_vecs_by_blocs_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
                                  ctypes.c_void_p, ctypes.c_void_p]
 
-apply_gains_to_mat_c = mylib.apply_gains_to_mat
-apply_gains_to_mat_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
-                                 ctypes.c_int]
+apply_gains_to_matrix = mylib.apply_gains_to_mat
+apply_gains_to_matrix.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
+                                  ctypes.c_int]
 
 apply_gains_to_mat_dense_c = mylib.apply_gains_to_mat_dense
 apply_gains_to_mat_dense_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
@@ -89,18 +89,19 @@ class sparse_2level:
         return sparse_2level(self.noise_variance, self.covariance_vectors, self.source_model_vectors,
                              self.baseline_group_edges, self.is_inverse)
 
-    def __mul__(self, vec):
-        ans = numpy.zeros(vec.shape)
+    #We define multiplication for this sparse2_level object
+    def __mul__(self, input_vector):
+        result = numpy.zeros(input_vector.shape)
         # void sparse_mat_times_vec_wrapper(double *diag, double *vecs, double *src, int n, int nvec, int nsrc, int nblock, long *lims, double *vec, double *ans)
         number_of_measurements = self.noise_variance.size
         number_of_covariance_vectors = self.covariance_vectors.shape[0]
         number_of_source_vectors = self.source_model_vectors.shape[0]
-        sparse_mat_times_vec_c(self.noise_variance.ctypes.data, self.covariance_vectors.ctypes.data,
-                               self.source_model_vectors.ctypes.data, number_of_measurements,
-                               number_of_covariance_vectors, number_of_source_vectors,
-                               self.number_of_baseline_groups, self.baseline_group_edges.ctypes.data, self.is_inverse,
-                               vec.ctypes.data, ans.ctypes.data)
-        return ans
+        sparse_matrix_vector_multiplication(self.noise_variance.ctypes.data, self.covariance_vectors.ctypes.data,
+                                            self.source_model_vectors.ctypes.data, number_of_measurements,
+                                            number_of_covariance_vectors, number_of_source_vectors,
+                                            self.number_of_baseline_groups, self.baseline_group_edges.ctypes.data, self.is_inverse,
+                                            input_vector.ctypes.data, result.ctypes.data)
+        return result
 
     def expand(self):
         m1 = self.source_model_vectors.transpose() * self.source_model_vectors
@@ -134,7 +135,7 @@ class sparse_2level:
             tmp2 = myeye - tmp
         else:
             tmp2 = myeye + tmp
-        many_chol_c(tmp2.ctypes.data, number_covariance_vectors, self.number_of_baseline_groups)
+        cholesky_factorization_parallel(tmp2.ctypes.data, number_covariance_vectors, self.number_of_baseline_groups)
         tmp3 = many_tri_inv(tmp2)
         tmp4 = mult_vecs_by_blocks(self.covariance_vectors, tmp3, self.baseline_group_edges)
 
@@ -158,8 +159,8 @@ class sparse_2level:
         vptr = myinv.covariance_vectors.ctypes.data
         # we can do the block multiply simply by sending in 0 for nsrc
         for i in range(nsrc):
-            sparse_mat_times_vec_c(dptr, vptr, sptr, n, number_covariance_vectors, 0, nblock, self.baseline_group_edges.ctypes.data, myinv.is_inverse,
-                                   self.source_model_vectors[i].ctypes.data, tmp[i].ctypes.data)
+            sparse_matrix_vector_multiplication(dptr, vptr, sptr, n, number_covariance_vectors, 0, nblock, self.baseline_group_edges.ctypes.data, myinv.is_inverse,
+                                                self.source_model_vectors[i].ctypes.data, tmp[i].ctypes.data)
 
         small_mat = tmp * self.source_model_vectors.transpose()
 
@@ -175,10 +176,10 @@ class sparse_2level:
         return myinv
 
     def apply_gains_to_mat(self, g, ant1, ant2):
-        apply_gains_to_mat_c(self.covariance_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             self.covariance_vectors.shape[1] // 2, self.covariance_vectors.shape[0])
-        apply_gains_to_mat_c(self.source_model_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                             self.source_model_vectors.shape[1] // 2, self.source_model_vectors.shape[0])
+        apply_gains_to_matrix(self.covariance_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+                              self.covariance_vectors.shape[1] // 2, self.covariance_vectors.shape[0])
+        apply_gains_to_matrix(self.source_model_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+                              self.source_model_vectors.shape[1] // 2, self.source_model_vectors.shape[0])
 
         return
 
@@ -190,10 +191,10 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0)
     n = sig.shape[0]
     assert (sig.shape[1] == n)
 
-    apply_gains_to_mat_c(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
+    apply_gains_to_matrix(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
 
     cov = cov.transpose().copy()
-    apply_gains_to_mat_c(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
+    apply_gains_to_matrix(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
 
     cov = cov.transpose().copy()
     cov = cov + noise
@@ -207,22 +208,22 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0)
     return chisq
 
 
-def get_gradient_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
+def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
     do_times = False
-    g = g / scale_fac
+    gains = gains / scale_fac
     cov = sig.copy()
     n = sig.shape[0]
-    apply_gains_to_mat_c(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
+    apply_gains_to_matrix(cov.ctypes.data, gains.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
     cov = cov.transpose().copy()
-    apply_gains_to_mat_c(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
-    cov = cov + noise
+    apply_gains_to_matrix(cov.ctypes.data, gains.ctypes.data, ant1.ctypes.data, ant2.ctypes.data, n / 2, n)
+    cov = cov + covariance_matrix
     cov = 0.5 * (cov + cov.transpose())
     cov_inv = numpy.linalg.inv(cov)
     sd = numpy.dot(cov_inv, data)
 
     # make g*(c_inv)*d
     gsd = sd.copy()
-    apply_gains_to_mat_c(gsd.ctypes.data, g.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, n / 2, 1)
+    apply_gains_to_matrix(gsd.ctypes.data, gains.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, n / 2, 1)
 
     cgsd = numpy.dot(gsd, sig)
 
@@ -241,10 +242,10 @@ def get_gradient_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1
     nant = numpy.max([numpy.max(ant1), numpy.max(ant2)]) + 1
     grad = numpy.zeros(2 * nant)
 
-    r1 = g[2 * ant1]
-    r2 = g[2 * ant2]
-    i1 = g[2 * ant1 + 1]
-    i2 = g[2 * ant2 + 1]
+    r1 = gains[2 * ant1]
+    r2 = gains[2 * ant2]
+    i1 = gains[2 * ant1 + 1]
+    i2 = gains[2 * ant2 + 1]
     m1r_v2 = 0 * cgsd
     m1i_v2 = 0 * cgsd
     m2r_v2 = 0 * cgsd
@@ -285,23 +286,23 @@ def get_gradient_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1
     # chisq=numpy.sum(sd*data)
     # print chisq
 
-    nn = g.size / 2.0
-    grad_real = 2 * (numpy.sum(g[0::2]) - nn) / nn
-    grad_im = 2 * numpy.sum(g[1::2])
+    nn = gains.size / 2.0
+    grad_real = 2 * (numpy.sum(gains[0::2]) - nn) / nn
+    grad_im = 2 * numpy.sum(gains[1::2])
 
     return -2 * grad / scale_fac + normfac * (grad_real + grad_im) / scale_fac
 
 
-def get_chisq(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
+def get_chisq(gains, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
 
-    g = g / scale_fac
+    gains = gains / scale_fac
     do_times = False
     if do_times:
         t1 = time.time()
     mycov = mat.copy()
 
     # Something is going wrong here due to numpy.array types
-    mycov.apply_gains_to_mat(g, ant1, ant2)
+    mycov.apply_gains_to_mat(gains, ant1, ant2)
 
     if do_times:
         t2 = time.time();
@@ -313,46 +314,53 @@ def get_chisq(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
     sd = mycov_inv * data
     chisq = numpy.sum(sd * data)
 
-    nn = g.size / 2
-    chisq = chisq + normfac * ((numpy.sum(g[1::2])) ** 2 + (numpy.sum(g[0::2]) - nn) ** 2)
+
+    nn = gains.size / 2
+    chisq = chisq + normfac * ((numpy.sum(gains[1::2])) ** 2 + (numpy.sum(gains[0::2]) - nn) ** 2)
 
     #print(chisq)
     #print(chisq)
     return chisq
 
 
-def get_gradient(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
-    g = g / scale_fac
-    do_times = False
-    if do_times:
+def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indices, scale_factor=1.0, normfac=1.0,
+                 do_code_timing = False):
+    gains = gains / scale_factor
+
+    if do_code_timing:
         t1 = time.time()
-    mycov = mat.copy()
-    mycov.apply_gains_to_mat(g, ant1, ant2)
-    if do_times:
+
+    covariance_matrix_copy = covariance_matrix.copy()
+    covariance_matrix_copy.apply_gains_to_mat(gains, antenna1_indices, antenna2_indices)
+
+    if do_code_timing:
         t2 = time.time();
         print(t2 - t1)
-    mycov_inv = mycov.inv()
-    if do_times:
+
+    covariance_matrix_inverse = covariance_matrix_copy.inv()
+
+    if do_code_timing:
         t2 = time.time();
         print(t2 - t1)
-    sd = mycov_inv * data
+
+    sd = covariance_matrix_inverse * data
     gsd = sd.copy();
-    apply_gains_to_mat_c(gsd.ctypes.data, g.ctypes.data, ant2.ctypes.data, ant1.ctypes.data, gsd.size // 2, 1);
-    tmp = mat.copy()
+    apply_gains_to_matrix(gsd.ctypes.data, gains.ctypes.data, antenna2_indices.ctypes.data, antenna1_indices.ctypes.data, gsd.size // 2, 1);
+    tmp = covariance_matrix.copy()
     tmp.noise_variance[:] = 0
     cgsd = tmp * gsd
 
-    if do_times:
+    if do_code_timing:
         t2 = time.time();
         print(t2 - t1)
 
-    nant = numpy.max([numpy.max(ant1), numpy.max(ant2)]) + 1
+    nant = numpy.max([numpy.max(antenna1_indices), numpy.max(antenna2_indices)]) + 1
     grad = numpy.zeros(2 * nant)
 
-    r1 = g[2 * ant1]
-    r2 = g[2 * ant2]
-    i1 = g[2 * ant1 + 1]
-    i2 = g[2 * ant2 + 1]
+    r1 = gains[2 * antenna1_indices]
+    r2 = gains[2 * antenna2_indices]
+    i1 = gains[2 * antenna1_indices + 1]
+    i2 = gains[2 * antenna2_indices + 1]
     m1r_v2 = 0 * cgsd
     m1i_v2 = 0 * cgsd
     m2r_v2 = 0 * cgsd
@@ -367,7 +375,7 @@ def get_gradient(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
     m2i_v2[0::2] = i1 * sd[0::2] - r1 * sd[1::2];
     m2i_v2[1::2] = r1 * sd[0::2] + i1 * sd[1::2];
 
-    if do_times:
+    if do_code_timing:
         t2 = time.time();
         print(t2 - t1)
 
@@ -379,36 +387,36 @@ def get_gradient(g, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
     v1_m2r_v2 = v1_m2r_v2[0::2] + v1_m2r_v2[1::2];
     v1_m2i_v2 = cgsd * m2i_v2;
     v1_m2i_v2 = v1_m2i_v2[0::2] + v1_m2i_v2[1::2];
-    if do_times:
+    if do_code_timing:
         t2 = time.time();
         print(t2 - t1)
 
     # print v1_m1r_v2[0:5]
 
-    sum_grads_c(grad.ctypes.data, v1_m1r_v2.ctypes.data, v1_m1i_v2.ctypes.data, ant1.ctypes.data, v1_m2i_v2.size)
-    sum_grads_c(grad.ctypes.data, v1_m2r_v2.ctypes.data, v1_m2i_v2.ctypes.data, ant2.ctypes.data, v1_m2i_v2.size)
-    if do_times:
+    sum_grads_c(grad.ctypes.data, v1_m1r_v2.ctypes.data, v1_m1i_v2.ctypes.data, antenna1_indices.ctypes.data, v1_m2i_v2.size)
+    sum_grads_c(grad.ctypes.data, v1_m2r_v2.ctypes.data, v1_m2i_v2.ctypes.data, antenna2_indices.ctypes.data, v1_m2i_v2.size)
+    if do_code_timing:
         t2 = time.time();
         print(t2 - t1)
     # chisq=numpy.sum(sd*data)
     # print chisq
 
-    nn = g.size / 2.0
-    grad_real = 2 * (numpy.sum(g[0::2]) - nn) / nn
-    grad_im = 2 * numpy.sum(g[1::2])
-    return -2 * grad / scale_fac + normfac * (grad_real + grad_im) / scale_fac
+    nn = gains.size / 2.0
+    grad_real = 2 * (numpy.sum(gains[0::2]) - nn) / nn
+    grad_im = 2 * numpy.sum(gains[1::2])
+    return -2 * grad / scale_factor + normfac * (grad_real + grad_im) / scale_factor
     # return -2*grad/scale_fac
 
 
 def chol(mat):
     n = mat.shape[0]
-    chol_c(mat.ctypes.data, n)
+    cholesky_factorization(mat.ctypes.data, n)
 
 
 def many_chol(mat):
     nmat = mat.shape[0]
     n = mat.shape[1]
-    many_chol_c(mat.ctypes.data, n, nmat)
+    cholesky_factorization_parallel(mat.ctypes.data, n, nmat)
 
 
 def tri_inv(mat):
