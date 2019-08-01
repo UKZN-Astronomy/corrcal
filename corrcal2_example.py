@@ -55,9 +55,9 @@ t1 = time.time()
 print(data.shape)
 corrcal2.get_chisq(gvec * fac, data, mat, ant1, ant2, scale_fac=fac)
 corrcal2.get_gradient(gvec*fac, data, mat, ant1, ant2, fac)
-#asdf = fmin_cg(corrcal2.get_chisq, gvec * fac, corrcal2.get_gradient, (data, mat, ant1, ant2, fac))
+asdf = fmin_cg(corrcal2.get_chisq, gvec * fac, corrcal2.get_gradient, (data, mat, ant1, ant2, fac))
 # t2 = time.time()
 # print( 'elapsed time to do nonlinear fit for ' + repr(nant) + ' antennas was ' + repr(t2 - t1))
-# #fit_gains = asdf / fac
-# #plt.plot(data[1::2] ** 2 + data[::2] ** 2)
-# #plt.show()
+fit_gains = asdf / fac
+plt.plot(data[1::2] ** 2 + data[::2] ** 2)
+plt.show()
