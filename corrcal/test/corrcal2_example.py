@@ -1,4 +1,5 @@
-import numpy, corrcal2, time
+import numpy, time
+from corrcal import corrcal2
 from matplotlib import pyplot as plt
 from importlib import reload
 reload(corrcal2)
@@ -54,7 +55,7 @@ t1 = time.time()
 
 print(data.shape)
 corrcal2.get_chisq(gvec * fac, data, mat, ant1, ant2, scale_fac=fac)
-corrcal2.get_gradient(gvec*fac, data, mat, ant1, ant2, fac)
+corrcal2.get_gradient(gvec * fac, data, mat, ant1, ant2, fac)
 asdf = fmin_cg(corrcal2.get_chisq, gvec * fac, corrcal2.get_gradient, (data, mat, ant1, ant2, fac))
 # t2 = time.time()
 # print( 'elapsed time to do nonlinear fit for ' + repr(nant) + ' antennas was ' + repr(t2 - t1))
