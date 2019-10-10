@@ -1,15 +1,7 @@
 from __future__ import print_function
-from cffi import FFI
 import numpy
 import ctypes
 import time
-import os
-########### Look into https://cffi.readthedocs.io/en/latest/
-
-
-from matplotlib import pyplot
-
-
 
 try:
     import pyfof
