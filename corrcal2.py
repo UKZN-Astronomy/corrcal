@@ -66,6 +66,27 @@ sum_grads_c.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctype
 
 
 class sparse_2level:
+    """
+    sparse_2level contains/creates the data covariance matrix and all associated matrix operations
+
+    Attributes
+    ----------
+    noise_variance  :   array_like
+                        Contains the (1xN) thermal noise variance vector
+    covariance_vectors  :   array_like
+                            is an (MxN) array containing M eigenvectors of the data covariance matrix
+    source_model_vectors    :   array_like
+                                is an MxN array containing M model visibility vectors for M sources
+    redudant_group_edges    :   array_like
+                                is a vector that contains the start indices of each new redundant group as organised by
+                                the grid_data function
+    is_inverse  :   bool
+                    ????? Probably something to use if you've have inverted the covariance matrices and did the
+                    decomposition on that
+
+    """
+
+
     def __init__(self, noise_variance, covariance_vectors, source_model_vectors, redundant_group_edges, is_inverse=0):
         self.noise_variance = noise_variance.copy()
         self.covariance_vectors = numpy.matrix(covariance_vectors.copy())
@@ -78,11 +99,22 @@ class sparse_2level:
         self.number_of_baseline_groups = len(redundant_group_edges) - 1
 
     def copy(self):
+        """
+        Method to copy sparse_2level object
+
+        Returns:
+            copy of sparse_2level object
+        """
         return sparse_2level(self.noise_variance, self.covariance_vectors, self.source_model_vectors,
                              self.baseline_group_edges, self.is_inverse)
 
     #We define multiplication for this sparse2_level object
     def __mul__(self, input_vector):
+        """
+        Implements sparse matrix multiplication with any data length vector
+
+        """
+
         result = numpy.zeros(input_vector.shape)
         # void sparse_mat_times_vec_wrapper(double *diag, double *vecs, double *src, int n, int nvec, int nsrc, int nblock, long *lims, double *vec, double *ans)
         number_of_measurements = self.noise_variance.size
@@ -96,6 +128,10 @@ class sparse_2level:
         return result
 
     def expand(self):
+        """
+        Method ??????
+
+        """
         m1 = self.source_model_vectors.transpose() * self.source_model_vectors
         for i in range(0, self.number_of_baseline_groups):
             i1 = self.baseline_group_edges[i]
@@ -109,7 +145,10 @@ class sparse_2level:
             return mm + m1
 
     def inv(self):
+        """
+        Method that efficiently computes the inverse of a sparse matrix using provided c-code
 
+        """
         t1 = time.time();
         myinv = self.copy()
         myinv.is_inverse = ~self.is_inverse
@@ -168,6 +207,26 @@ class sparse_2level:
         return myinv
 
     def apply_gains_to_mat(self, g, ant1, ant2):
+        """
+        Method that multiplies gain vector with the sparse representation of the data covariance matix G^T C G, using
+        antenna indices for each baseline in the data vector it determines which gain is multiplied with which
+        covariance entry
+
+        Parameters
+        ----------
+        g   :   array_like
+                (1xN) array that contains the gains of each antenna matching the indices in ant1 and ant2
+        ant1    :   array_like
+                    (1xN) array that contains the indices of the first antenna in each baseline corresponding the gain
+                    in g
+        ant2    :   array_like
+                    (1xN) array that contains the indices of the second antenna in each baseline corresponding the gain
+                    in g
+        Returns
+        -------
+
+        None
+        """
         apply_gains_to_matrix(self.covariance_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
                               self.covariance_vectors.shape[1] // 2, self.covariance_vectors.shape[0])
         apply_gains_to_matrix(self.source_model_vectors.ctypes.data, g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
@@ -178,6 +237,9 @@ class sparse_2level:
 
 
 def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
+    """
+    Not used
+    """
     g = g / scale_fac
     cov = sig.copy()
     n = sig.shape[0]
@@ -201,6 +263,9 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0)
 
 
 def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2, scale_fac=1.0, normfac=1.0):
+    """
+    Not used
+    """
     do_times = False
     gains = gains / scale_fac
     cov = sig.copy()
@@ -286,7 +351,32 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2, scale_fa
 
 
 def get_chisq(gains, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
+    """
+    Calculates the the chi square for the current gains, data and data covariance matrix
 
+    Args:
+        gains   :   array_like
+                    vector that contains the gain of each antenna
+        data    :   array_like
+                    vector that contains the visibility data split up into alternating real and imaginary pairs
+        mat     :   sparse_2level object
+                    sparse representation of the data covariance matrix
+        ant1    :   array_like
+                    vector that contains the antenna index of the first antenna in baseline, used to reference the gain
+                    vector
+        ant2    :   array_like
+                    vector that contains the antenna index of the second antenna in baseline, used to reference the gain
+                    vector
+        scale_fac   :   float
+                        arbritary scale factor that rescales the gains to help the minimiser actually reach a solution
+                        (still unclear to me how this works)
+
+        normfac :   float
+                    unknown function
+
+    Returns
+    -------
+    """
     gains = gains / scale_fac
     do_times = False
     if do_times:
@@ -317,6 +407,34 @@ def get_chisq(gains, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
 
 def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indices, scale_factor=1.0, normfac=1.0,
                  do_code_timing = False):
+    """
+
+    Parameters
+    ----------
+    gains   :   array_like
+                A (1xN) vector containing the current gain solutions
+    data    :   array_like
+                A (1x2M) vector that contains the real and imaginary components of M measured visibilities.
+    covariance_matrix   : sparse_2level object that contains the data covariance
+
+    antenna1_indices    :   array_like
+                            (1xM) vector that contains indices of the first antenna in a baseline pertaining referring to
+                            the entries in gains
+    antenna2_indices    :   array_like
+                            (1xM) vector that contains indices of the second antenna in a baseline pertaining referring to
+                            the entries in gains
+    scale_factor    :   float
+                        A scale factor that makes it easier for the scipy solver to converge.
+    normfac :   float
+                ???????? Unknown function
+    do_code_timing  :   bool
+                        Flag when timining output is desired
+
+    Returns
+        Gradient values at current evaluation of the chi-square
+    -------
+
+    """
     gains = gains / scale_factor
 
     if do_code_timing:
@@ -401,17 +519,56 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indi
 
 
 def chol(mat):
+    """
+    Wrapper function that passes sparse_2level matrix object to the c-code that performs cholesky factorisation
+
+    Parameters
+    ----------
+    mat :   object
+            sparse_2level matrix object that contains the data covariance
+
+    Returns
+    -------
+        None
+    """
     n = mat.shape[0]
     cholesky_factorization(mat.ctypes.data, n)
 
 
 def many_chol(mat):
+    """
+    Wrapper function that passes the sparse_2level matrix object to the parallelised c-code that performs cholesky
+     into a triangular matrix.
+
+    Parameters
+    ----------
+    mat :   object
+            sparse_2level matrix object that contains the data covariance
+
+    Returns
+    -------
+        None
+    """
+
     nmat = mat.shape[0]
     n = mat.shape[1]
     cholesky_factorization_parallel(mat.ctypes.data, n, nmat)
 
 
 def tri_inv(mat):
+    """
+    Wrapper function that computes the inverse of the data covariance matrix, by passing the sparse_2level matrix object
+    to the c-code that handles the inversion of a triangular matrix. Note: perform cholesky decomposition first?
+
+    Parameters
+    ----------
+    mat :   object
+            sparse_2level matrix object that contains the data covariance
+
+    Returns
+    -------
+    mat_inv :   the inverse of the data covariance matrix
+    """
     n = mat.shape[0]
     mat_inv = 0 * mat
     tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, n)
@@ -419,6 +576,21 @@ def tri_inv(mat):
 
 
 def many_tri_inv(mat):
+    """
+    Optimised matrix inversion?
+    Wrapper function that computes the inverse of the data covariance matrix, by passing the sparse_2level matrix object
+    to the c-code that handles the inversion of a triangular matrix. Note: perform cholesky decomposition first?
+
+    Parameters
+    ----------
+    mat :   object
+            sparse_2level matrix object that contains the data covariance
+
+    Returns
+    -------
+    mat_inv :   the inverse of the data covariance matrix
+    """
+
     mat_inv = 0 * mat
     sz = mat.shape
 
@@ -434,6 +606,20 @@ def many_tri_inv(mat):
 
 
 def read_sparse(fname):
+    """
+    Function that reads the covariance data set that comes with the corrcal2_example.py code
+    Parameters
+    ----------
+    fname   :   str
+                filename of the data file, should be binary
+
+    Returns
+    mat :   object
+            sparse_2level object that contains all covariance information
+    -------
+
+    """
+
     f = open(fname)
     n = numpy.fromfile(f, 'int32', 1)[0];
     isinv = (numpy.fromfile(f, 'int32', 1)[0] != 0);
@@ -461,6 +647,29 @@ def read_sparse(fname):
 
 
 def make_uv_grid(u, v, tol=0.01, do_fof=True):
+    """
+    Function that grids data onto the uv-plane and to determine redundant groups
+
+    Parameters
+    ----------
+    u   :   u-coordinates of each baseline (in wavelengths)
+    v   :   v-coordinates of each baseline (in wavelengths)
+    tol :   redundancy tolerance - withing what radius should baselines lie from each to be a redundant group. Depends
+            on position precision of the array
+    do_fof  :   bool
+                if True it uses pyfof to find redundant groups. If False: it devides the uv_grid in block with size tol
+
+    Returns
+    -------
+    ii  :   array_like
+            Array that maps baselines as passed into make_uv_grid into redundant groups
+    edges   :   array_like
+                contains the starting index of each new redundant group
+
+    iconj:  array_like
+            Contains flags indicating whether visibilities are conjugated or not (e.g. which part of the uv-plane are
+            they)
+    """
     isconj = (v < 0) | ((v < tol) & (u < 0))
     u = u.copy()
     v = v.copy()
