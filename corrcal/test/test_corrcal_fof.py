@@ -1,6 +1,5 @@
 import numpy
-import corrcal2
-from matplotlib import pyplot as plt
+from corrcal import corrcal
 
 nn=5
 x=numpy.arange(nn)
@@ -35,7 +34,7 @@ vis_org=numpy.random.randn(ant1_org.size)+numpy.complex(0,1)*numpy.random.randn(
 
 noise_org=numpy.ones(u_org.size)
 
-vis,u,v,noise,ant1,ant2,edges=corrcal2.grid_data(vis_org,u_org,v_org,noise_org,ant1_org,ant2_org)
+vis,u,v,noise,ant1,ant2,edges= corrcal.grid_data(vis_org, u_org, v_org, noise_org, ant1_org, ant2_org)
 for i in range(len(edges)-1):
     mystd=numpy.std(u[edges[i]:edges[i+1]])+numpy.std(v[edges[i]:edges[i+1]])
     print edges[i],edges[i+1],mystd
@@ -54,7 +53,7 @@ big_vis=numpy.zeros(2*vis.size)
 big_vis[0::2]=numpy.real(vis)
 big_vis[1::2]=numpy.imag(vis)
 
-mycov=corrcal2.sparse_2level(big_noise,100*vecs,500*src,2*edges)
+mycov= corrcal.sparse_2level(big_noise, 100 * vecs, 500 * src, 2 * edges)
 guess=numpy.zeros(2*len(ant1))
 guess[0::2]=1.0
 fac=1000.0
@@ -65,4 +64,4 @@ gvec=gvec+0.1*numpy.random.randn(gvec.size)
 gvec[0]=1
 gvec[1]=0
 
-asdf=fmin_cg(corrcal2.get_chisq,gvec*fac,corrcal2.get_gradient,(big_vis+500*src,mycov,ant1,ant2,fac))
+asdf=fmin_cg(corrcal.get_chisq, gvec * fac, corrcal.get_gradient, (big_vis + 500 * src, mycov, ant1, ant2, fac))

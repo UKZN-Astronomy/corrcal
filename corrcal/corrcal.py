@@ -3,6 +3,7 @@ import numpy
 import ctypes
 import time
 
+
 try:
     import pyfof
 
@@ -11,8 +12,10 @@ except:
     have_fof = False
 
 
-
-mylib = ctypes.cdll.LoadLibrary("/home/ronniyjoseph/Sync/PhD/Projects/hybrid_calibration/corrcal2/libcorrcal2_funs.so")
+# Change the following line to the corrcal dynamic library in you machine
+mylib = ctypes.cdll.LoadLibrary(
+    "/home/username/corrcal/corrcal/src/libcorrcal_funs.so"
+)
 
 
 
