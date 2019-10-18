@@ -2,7 +2,7 @@ from __future__ import print_function
 import numpy
 import ctypes
 import time
-
+import os
 
 try:
     import pyfof
@@ -12,10 +12,9 @@ except:
     have_fof = False
 
 
+LOCATION = os.path.dirname(os.path.abspath(__file__))
 # Change the following line to the corrcal dynamic library in you machine
-mylib = ctypes.cdll.LoadLibrary(
-    "/home/username/corrcal/corrcal/src/libcorrcal_funs.so"
-)
+mylib = ctypes.cdll.LoadLibrary(LOCATION + "/src/libcorrcal_funs.so")
 
 
 
