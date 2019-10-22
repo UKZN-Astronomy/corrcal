@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "corrcal.h"
+#include "_corrcal.h"
 #include <omp.h>
 #include <math.h>
 #include <complex.h>

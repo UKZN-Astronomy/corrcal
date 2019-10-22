@@ -3,8 +3,8 @@ import corrcal
 from data import DATA_PATH
 from matplotlib import pyplot as plt
 
-# You'll need to compile corrcal_funs.c into a shared library with e.g.
-# gcc-4.9 -fopenmp -std=c99 -O3 -shared -fPIC -o libcorrcal2_funs.so corrcal_funs.c -lm -lgomp
+# You'll need to compile _corrcal.c into a shared library with e.g.
+# gcc-4.9 -fopenmp -std=c99 -O3 -shared -fPIC -o libcorrcal2_funs.so _corrcal.c -lm -lgomp
 # the library will need to be in your LD_LIBRARY_PATH.  If it doesn't show up
 # and you compiled in the current directory, either do
 # export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:.
