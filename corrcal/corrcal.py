@@ -4,6 +4,13 @@ import ctypes
 import time
 import os
 
+
+__all__ = ['sparse_2level', 'get_chisq', 'get_chisq_dense', 'get_gradient',
+           'get_gradient_dense', 'chol', 'many_chol', 'tri_inv', 'many_tri_inv',
+           'read_sparse', 'make_uv_grid', 'grid_data', 'mymatmul',
+           'mult_vecs_by_blocks', 'make_uv_from_antpos']
+
+
 try:
     import pyfof
 
