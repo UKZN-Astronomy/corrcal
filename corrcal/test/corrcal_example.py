@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy, time
 import corrcal
 from data import DATA_PATH
