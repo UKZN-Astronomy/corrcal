@@ -37,7 +37,7 @@ noise_org=numpy.ones(u_org.size)
 vis,u,v,noise,ant1,ant2,edges= corrcal.grid_data(vis_org, u_org, v_org, noise_org, ant1_org, ant2_org)
 for i in range(len(edges)-1):
     mystd=numpy.std(u[edges[i]:edges[i+1]])+numpy.std(v[edges[i]:edges[i+1]])
-    print(edges[i],edges[i+1],mystd)
+    print((edges[i],edges[i+1],mystd))
 v1=numpy.zeros(2*vis.size)
 v1[0::2]=1
 v2=numpy.zeros(2*vis.size)

@@ -266,7 +266,7 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0, normfac=1.0)
     chisq = numpy.sum(data * numpy.asarray(rhs))
     nn = g.size / 2
     chisq = chisq + normfac * ((numpy.sum(g[1::2])) ** 2 + (numpy.sum(g[0::2]) - nn) ** 2)
-    print(chisq, numpy.mean(g[0::2]), numpy.mean(g[1::2]))
+    print((chisq, numpy.mean(g[0::2]), numpy.mean(g[1::2])))
     return chisq
 
 
@@ -327,7 +327,7 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2, scale_fa
 
     if do_times:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     v1_m1r_v2 = cgsd * m1r_v2;
     v1_m1r_v2 = v1_m1r_v2[0::2] + v1_m1r_v2[1::2];
@@ -339,7 +339,7 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2, scale_fa
     v1_m2i_v2 = v1_m2i_v2[0::2] + v1_m2i_v2[1::2];
     if do_times:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     # print v1_m1r_v2[0:5]
 
@@ -347,7 +347,7 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2, scale_fa
     sum_grads_c(grad.ctypes.data, v1_m2r_v2.ctypes.data, v1_m2i_v2.ctypes.data, ant2.ctypes.data, v1_m2i_v2.size)
     if do_times:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
     # chisq=numpy.sum(sd*data)
     # print chisq
 
@@ -396,11 +396,11 @@ def get_chisq(gains, data, mat, ant1, ant2, scale_fac=1.0, normfac=1.0):
 
     if do_times:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
     mycov_inv = mycov.inv()
     if do_times:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
     sd = mycov_inv * data
     chisq = numpy.sum(sd * data)
 
@@ -453,13 +453,13 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indi
 
     if do_code_timing:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     covariance_matrix_inverse = covariance_matrix_copy.inv()
 
     if do_code_timing:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     sd = covariance_matrix_inverse * data
     gsd = sd.copy();
@@ -470,7 +470,7 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indi
 
     if do_code_timing:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     nant = numpy.max([numpy.max(antenna1_indices), numpy.max(antenna2_indices)]) + 1
     grad = numpy.zeros(2 * nant)
@@ -495,7 +495,7 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indi
 
     if do_code_timing:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     v1_m1r_v2 = cgsd * m1r_v2;
     v1_m1r_v2 = v1_m1r_v2[0::2] + v1_m1r_v2[1::2];
@@ -507,7 +507,7 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indi
     v1_m2i_v2 = v1_m2i_v2[0::2] + v1_m2i_v2[1::2];
     if do_code_timing:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
 
     # print v1_m1r_v2[0:5]
 
@@ -515,7 +515,7 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices, antenna2_indi
     sum_grads_c(grad.ctypes.data, v1_m2r_v2.ctypes.data, v1_m2i_v2.ctypes.data, antenna2_indices.ctypes.data, v1_m2i_v2.size)
     if do_code_timing:
         t2 = time.time();
-        print(t2 - t1)
+        print((t2 - t1))
     # chisq=numpy.sum(sd*data)
     # print chisq
 
@@ -644,7 +644,7 @@ def read_sparse(fname):
 
 
     if crap.size > 0:
-        print('file ' + fname + ' had unexpected length.')
+        print(('file ' + fname + ' had unexpected length.'))
         return
 
     vecs = vecs.reshape([nvec, n])
