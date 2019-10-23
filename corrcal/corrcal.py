@@ -1,7 +1,8 @@
 import numpy
 import ctypes
 import time
-import os
+import site
+from glob import glob
 
 
 __all__ = ['sparse_2level', 'get_chisq', 'get_chisq_dense', 'get_gradient',
@@ -18,9 +19,10 @@ except:
     have_fof = False
 
 
-LOCATION = os.path.dirname(os.path.abspath(__file__))
-# Change the following line to the corrcal dynamic library in you machine
-mylib = ctypes.cdll.LoadLibrary(LOCATION + "/src/libcorrcal_funs.so")
+# Temporarily Work around to get the location of libcorrcal.so compiled
+# by setuptools. This will not be needed once we migrate to CFFI
+LIB_LOC = glob(site.getsitepackages()[0] + "/corrcal*.egg/libcorrcal*.so")[0]
+mylib = ctypes.cdll.LoadLibrary(LIB_LOC)
 
 
 
