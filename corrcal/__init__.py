@@ -1,1 +1,1 @@
-from corrcal import *
+from .corrcal import *
