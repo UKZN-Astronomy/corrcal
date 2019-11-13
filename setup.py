@@ -23,7 +23,7 @@ setup(
         Extension(
             'libcorrcal',
             sources=['corrcal/src/_corrcal.c'],
-            include_dirs=['corrcal/src'], install_requires=['numpy']
+            include_dirs=['corrcal/src'], install_requires=['numpy', 'cffi']
         )
     ]
 )
