@@ -1,29 +1,29 @@
-import numpy, corrcal2, time
+import numpy, time
+import corrcal
+from data import DATA_PATH
 from matplotlib import pyplot as plt
-from importlib import reload
-reload(corrcal2)
-# You'll need to compile corrcal2_funs.c into a shared library with e.g.
-# gcc-4.9 -fopenmp -std=c99 -O3 -shared -fPIC -o libcorrcal2_funs.so corrcal2_funs.c -lm -lgomp
+
+# You'll need to compile _corrcal.c into a shared library with e.g.
+# gcc-4.9 -fopenmp -std=c99 -O3 -shared -fPIC -o libcorrcal2_funs.so _corrcal.c -lm -lgomp
 # the library will need to be in your LD_LIBRARY_PATH.  If it doesn't show up
 # and you compiled in the current directory, either do
 # export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:.
-# or change the ctypes.cdll.LoadLibrary call in corrcal2.py to have your full path location
-
+# or change the ctypes.cdll.LoadLibrary call in corrcal.py to have your full path location
 
 # read relevant data.
-f = open('ant1.dat');
+f = open(DATA_PATH + '/ant1.dat');
 ant1 = numpy.fromfile(f, 'int64') - 1;
 f.close()
-f = open('ant2.dat');
+f = open(DATA_PATH +'/ant2.dat');
 ant2 = numpy.fromfile(f, 'int64') - 1;
 f.close()
-f = open('gtmp.dat');
+f = open(DATA_PATH + '/gtmp.dat');
 gvec = numpy.fromfile(f, 'float64');
 f.close()
-f = open('vis.dat');
+f = open(DATA_PATH + '/vis.dat');
 data = numpy.fromfile(f, 'float64');
 f.close()
-mat = corrcal2.read_sparse('signal_sparse2_test.dat')
+mat = corrcal.read_sparse(DATA_PATH + '/signal_sparse2_test.dat')
 # if you want to test timings, you can do so here.  Set t_min to some length of
 # time, and code will see how many gradient operations it can get through
 # during at least t_min seconds
@@ -51,11 +51,9 @@ from scipy.optimize import fmin_cg
 fac = 1000.0;
 t1 = time.time()
 
-
-print(data.shape)
-corrcal2.get_chisq(gvec * fac, data, mat, ant1, ant2, scale_fac=fac)
-corrcal2.get_gradient(gvec*fac, data, mat, ant1, ant2, fac)
-asdf = fmin_cg(corrcal2.get_chisq, gvec * fac, corrcal2.get_gradient, (data, mat, ant1, ant2, fac))
+corrcal.get_chisq(gvec * fac, data, mat, ant1, ant2, scale_fac=fac)
+corrcal.get_gradient(gvec * fac, data, mat, ant1, ant2, fac)
+asdf = fmin_cg(corrcal.get_chisq, gvec * fac, corrcal.get_gradient, (data, mat, ant1, ant2, fac))
 # t2 = time.time()
 # print( 'elapsed time to do nonlinear fit for ' + repr(nant) + ' antennas was ' + repr(t2 - t1))
 fit_gains = asdf / fac
