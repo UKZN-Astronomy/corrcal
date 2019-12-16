@@ -1,6 +1,6 @@
 import time
-import numpy
 
+import numpy as np
 from scipy.optimize import fmin_cg
 from matplotlib import pyplot as plt
 
@@ -17,16 +17,16 @@ from corrcal.data import DATA_PATH
 
 # read relevant data.
 f = open(DATA_PATH + '/ant1.dat')
-ant1 = numpy.fromfile(f, 'int64') - 1
+ant1 = np.fromfile(f, 'int64') - 1
 f.close()
 f = open(DATA_PATH + '/ant2.dat')
-ant2 = numpy.fromfile(f, 'int64') - 1
+ant2 = np.fromfile(f, 'int64') - 1
 f.close()
 f = open(DATA_PATH + '/gtmp.dat')
-gvec = numpy.fromfile(f, 'float64')
+gvec = np.fromfile(f, 'float64')
 f.close()
 f = open(DATA_PATH + '/vis.dat')
-data = numpy.fromfile(f, 'float64')
+data = np.fromfile(f, 'float64')
 f.close()
 mat = corrcal.read_sparse(DATA_PATH + '/signal_sparse2_test.dat')
 # if you want to test timings, you can do so here.  Set t_min to some length of
