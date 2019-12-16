@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="corrcal",
-    version="0.0.1",
+    version="0.0.2",
     author="CorrCal Development Team",
     description="Correlation Calibration for Quasi-redundant radio interferometer",
     long_description=long_description,
@@ -21,9 +21,10 @@ setup(
     python_requires='>=3.7',
     ext_modules=[
         Extension(
-            'libcorrcal',
-            sources=['corrcal/src/_corrcal.c'],
-            include_dirs=['corrcal/src']
+            'c_corrcal',
+            sources=['corrcal/src/corrcal_c_funcs.c'],
+            include_dirs=['corrcal/src'],
+            install_requires=['numpy'],
         )
     ]
 )
