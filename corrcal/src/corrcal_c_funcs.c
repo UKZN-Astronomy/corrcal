@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "_corrcal.h"
 #include <omp.h>
 #include <math.h>
 #include <complex.h>
+
+#include "corrcal_c_funcs.h"
 
 //compile into a shared library with e.g.
 //gcc-4.9 -fopenmp -std=c99 -O3 -shared -fPIC -o libcorrcal2_funs.so corrcal2_funs.c -lm -lgomp
