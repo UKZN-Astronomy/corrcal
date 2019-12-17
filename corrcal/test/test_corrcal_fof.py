@@ -32,16 +32,14 @@ ant1_org = ant1[isok]
 ant2_org = ant2[isok]
 u_org = umat[isok]
 v_org = vmat[isok]
-vis_org = np.random.randn(ant1_org.size) + np.complex(0,
-                                                            1) * \
-          np.random.randn(
-    ant1_org.size)
+vis_org = np.random.randn(ant1_org.size) + \
+    np.complex(0, 1) * np.random.randn(ant1_org.size)
 
 noise_org = np.ones(u_org.size)
 
-vis, u, v, noise, ant1, ant2, edges = corrcal.grid_data(vis_org, u_org, v_org,
-                                                        noise_org, ant1_org,
-                                                        ant2_org)
+vis, u, v, noise, ant1, ant2, edges, ii, isconj = corrcal.grid_data(
+    vis_org, u_org, v_org, noise_org, ant1_org, ant2_org
+)
 for i in range(len(edges) - 1):
     mystd = np.std(u[edges[i]:edges[i + 1]]) + np.std(
         v[edges[i]:edges[i + 1]])
