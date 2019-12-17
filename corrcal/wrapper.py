@@ -18,7 +18,7 @@ __all__ = [
 
 # With ctypes, the location of libcorrcal*.so need to be hard-coded.
 # This will not be needed once we migrate to CFFI.
-LIB_LOC = glob(site.getsitepackages()[0] + "/c_corrcal*.so")[0]
+LIB_LOC = glob(site.getsitepackages()[0] + "/corrcal/c_corrcal*.so")[0]
 mylib = ctypes.cdll.LoadLibrary(LIB_LOC)
 
 sparse_matrix_vector_multiplication = mylib.sparse_mat_times_vec_wrapper

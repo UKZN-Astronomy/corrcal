@@ -23,7 +23,7 @@ setup(
     install_requires=['numpy'],
     ext_modules=[
         Extension(
-            'c_corrcal',
+            'corrcal.c_corrcal',
             sources=['corrcal/src/corrcal_c_funcs.c'],
             extra_compile_args=['-std=c99', '-fopenmp'],
             include_dirs=['corrcal/src'],
