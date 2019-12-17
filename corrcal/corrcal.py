@@ -2,14 +2,21 @@ import time
 
 import numpy as np
 
-from .wrapper import *
+from . import wrapper
 
 __all__ = ['Sparse2Level', 'get_chisq', 'get_chisq_dense', 'get_gradient',
            'get_gradient_dense', 'chol', 'many_chol', 'tri_inv', 'many_tri_inv',
            'read_sparse', 'make_uv_grid', 'grid_data', 'mymatmul',
            'mult_vecs_by_blocks', 'make_uv_from_antpos']
 
-# Not really sure what this does.
+
+# Check if `pyfof` (a friends of friends implementation in python) is available
+# to be used for finding redundant groups.
+# If `pyfof` is not installed the redundant grouping function `grid_data` cuts
+# the uv-plane into a grid and selects baselines that fall into a grid cell
+# as a redundant group.
+#
+# See grid_data in wrapper.py
 try:
     import pyfof
     have_fof = True
@@ -82,7 +89,7 @@ class Sparse2Level:
         number_of_measurements = self.noise_variance.size
         number_of_covariance_vectors = self.covariance_vectors.shape[0]
         number_of_source_vectors = self.source_model_vectors.shape[0]
-        sparse_matrix_vector_multiplication(
+        wrapper.sparse_matrix_vector_multiplication(
             self.noise_variance.ctypes.data,
             self.covariance_vectors.ctypes.data,
             self.source_model_vectors.ctypes.data,
@@ -131,12 +138,14 @@ class Sparse2Level:
             [self.number_of_baseline_groups, number_covariance_vectors,
              number_covariance_vectors])
 
-        make_all_small_blocks_c(self.noise_variance.ctypes.data,
-                                self.covariance_vectors.ctypes.data,
-                                self.baseline_group_edges.ctypes.data,
-                                self.number_of_baseline_groups,
-                                number_of_measurements,
-                                number_covariance_vectors, tmp.ctypes.data)
+        wrapper.make_all_small_blocks_c(
+            self.noise_variance.ctypes.data,
+            self.covariance_vectors.ctypes.data,
+            self.baseline_group_edges.ctypes.data,
+            self.number_of_baseline_groups,
+            number_of_measurements,
+            number_covariance_vectors, tmp.ctypes.data
+        )
 
         myeye = np.repeat([np.eye(number_covariance_vectors)],
                           self.number_of_baseline_groups, axis=0)
@@ -144,9 +153,11 @@ class Sparse2Level:
             tmp2 = myeye - tmp
         else:
             tmp2 = myeye + tmp
-        cholesky_factorization_parallel(tmp2.ctypes.data,
-                                        number_covariance_vectors,
-                                        self.number_of_baseline_groups)
+        wrapper.cholesky_factorization_parallel(
+            tmp2.ctypes.data,
+            number_covariance_vectors,
+            self.number_of_baseline_groups
+        )
         tmp3 = many_tri_inv(tmp2)
         tmp4 = mult_vecs_by_blocks(self.covariance_vectors, tmp3,
                                    self.baseline_group_edges)
@@ -154,7 +165,7 @@ class Sparse2Level:
         for i in range(tmp4.shape[0]):
             tmp4[i, :] = tmp4[i, :] * myinv.noise_variance
         # return tmp4
-        # invert_all_small_blocks_c(tmp.ctypes.data,self.nblock,nvec,np.int(
+        # wrapper.invert_all_small_blocks_c(tmp.ctypes.data,self.nblock,nvec,np.int(
         # self.isinv),tmp2.ctypes.data)
         # t2 = time.time()
         # print 'took ' + repr(t2-t1) + ' seconds to do inverse.'
@@ -172,7 +183,7 @@ class Sparse2Level:
         vptr = myinv.covariance_vectors.ctypes.data
         # we can do the block multiply simply by sending in 0 for nsrc
         for i in range(nsrc):
-            sparse_matrix_vector_multiplication(
+            wrapper.sparse_matrix_vector_multiplication(
                 dptr, vptr, sptr, n,
                 number_covariance_vectors, 0,
                 nblock,
@@ -221,15 +232,18 @@ class Sparse2Level:
 
         None
         """
-        apply_gains_to_matrix(self.covariance_vectors.ctypes.data,
-                              g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                              self.covariance_vectors.shape[1] // 2,
-                              self.covariance_vectors.shape[0])
-        apply_gains_to_matrix(self.source_model_vectors.ctypes.data,
-                              g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
-                              self.source_model_vectors.shape[1] // 2,
-                              self.source_model_vectors.shape[0])
-
+        wrapper.apply_gains_to_matrix(
+            self.covariance_vectors.ctypes.data,
+            g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+            self.covariance_vectors.shape[1] // 2,
+            self.covariance_vectors.shape[0]
+        )
+        wrapper.apply_gains_to_matrix(
+            self.source_model_vectors.ctypes.data,
+            g.ctypes.data, ant1.ctypes.data, ant2.ctypes.data,
+            self.source_model_vectors.shape[1] // 2,
+            self.source_model_vectors.shape[0]
+        )
         return
 
 
@@ -243,12 +257,22 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0,
     n = sig.shape[0]
     assert (sig.shape[1] == n)
 
-    apply_gains_to_matrix(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data,
-                          ant2.ctypes.data, n / 2, n)
+    wrapper.apply_gains_to_matrix(
+        cov.ctypes.data,
+        g.ctypes.data,
+        ant1.ctypes.data,
+        ant2.ctypes.data,
+        n / 2, n
+    )
 
     cov = cov.transpose().copy()
-    apply_gains_to_matrix(cov.ctypes.data, g.ctypes.data, ant1.ctypes.data,
-                          ant2.ctypes.data, n / 2, n)
+    wrapper.apply_gains_to_matrix(
+        cov.ctypes.data,
+        g.ctypes.data,
+        ant1.ctypes.data,
+        ant2.ctypes.data,
+        n / 2, n
+    )
 
     cov = cov.transpose().copy()
     cov = cov + noise
@@ -257,8 +281,8 @@ def get_chisq_dense(g, data, noise, sig, ant1, ant2, scale_fac=1.0,
     rhs = np.dot(cov_inv, data)
     chisq = np.sum(data * np.asarray(rhs))
     nn = g.size / 2
-    chisq = chisq + normfac * (
-            (np.sum(g[1::2])) ** 2 + (np.sum(g[0::2]) - nn) ** 2)
+    chisq = chisq + normfac * \
+        ((np.sum(g[1::2])) ** 2 + (np.sum(g[0::2]) - nn) ** 2)
     print((chisq, np.mean(g[0::2]), np.mean(g[1::2])))
     return chisq
 
@@ -275,11 +299,21 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2,
     gains = gains / scale_fac
     cov = sig.copy()
     n = sig.shape[0]
-    apply_gains_to_matrix(cov.ctypes.data, gains.ctypes.data, ant1.ctypes.data,
-                          ant2.ctypes.data, n / 2, n)
+    wrapper.apply_gains_to_matrix(
+        cov.ctypes.data,
+        gains.ctypes.data,
+        ant1.ctypes.data,
+        ant2.ctypes.data,
+        n / 2, n
+    )
     cov = cov.transpose().copy()
-    apply_gains_to_matrix(cov.ctypes.data, gains.ctypes.data, ant1.ctypes.data,
-                          ant2.ctypes.data, n / 2, n)
+    wrapper.apply_gains_to_matrix(
+        cov.ctypes.data,
+        gains.ctypes.data,
+        ant1.ctypes.data,
+        ant2.ctypes.data,
+        n / 2, n
+    )
     cov = cov + covariance_matrix
     cov = 0.5 * (cov + cov.transpose())
     cov_inv = np.linalg.inv(cov)
@@ -287,8 +321,13 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2,
 
     # make g*(c_inv)*d
     gsd = sd.copy()
-    apply_gains_to_matrix(gsd.ctypes.data, gains.ctypes.data, ant2.ctypes.data,
-                          ant1.ctypes.data, n / 2, 1)
+    wrapper.apply_gains_to_matrix(
+        gsd.ctypes.data,
+        gains.ctypes.data,
+        ant2.ctypes.data,
+        ant1.ctypes.data,
+        n / 2, 1
+    )
 
     cgsd = np.dot(gsd, sig)
 
@@ -343,10 +382,20 @@ def get_gradient_dense(gains, data, covariance_matrix, sig, ant1, ant2,
 
     # print v1_m1r_v2[0:5]
 
-    sum_grads_c(grad.ctypes.data, v1_m1r_v2.ctypes.data, v1_m1i_v2.ctypes.data,
-                ant1.ctypes.data, v1_m2i_v2.size)
-    sum_grads_c(grad.ctypes.data, v1_m2r_v2.ctypes.data, v1_m2i_v2.ctypes.data,
-                ant2.ctypes.data, v1_m2i_v2.size)
+    wrapper.sum_grads_c(
+        grad.ctypes.data,
+        v1_m1r_v2.ctypes.data,
+        v1_m1i_v2.ctypes.data,
+        ant1.ctypes.data,
+        v1_m2i_v2.size
+    )
+    wrapper.sum_grads_c(
+        grad.ctypes.data,
+        v1_m2r_v2.ctypes.data,
+        v1_m2i_v2.ctypes.data,
+        ant2.ctypes.data,
+        v1_m2i_v2.size
+    )
     # if do_times:
     #     t2 = time.time()
     #     print(t2 - t1)
@@ -478,9 +527,14 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices,
 
     sd = covariance_matrix_inverse * data
     gsd = sd.copy()
-    apply_gains_to_matrix(gsd.ctypes.data, gains.ctypes.data,
-                          antenna2_indices.ctypes.data,
-                          antenna1_indices.ctypes.data, gsd.size // 2, 1)
+    wrapper.apply_gains_to_matrix(
+        gsd.ctypes.data,
+        gains.ctypes.data,
+        antenna2_indices.ctypes.data,
+        antenna1_indices.ctypes.data,
+        gsd.size // 2,
+        1
+    )
     tmp = covariance_matrix.copy()
     tmp.noise_variance[:] = 0
     cgsd = tmp * gsd
@@ -528,12 +582,20 @@ def get_gradient(gains, data, covariance_matrix, antenna1_indices,
 
     # print v1_m1r_v2[0:5]
 
-    sum_grads_c(grad.ctypes.data, v1_m1r_v2.ctypes.data, v1_m1i_v2.ctypes.data,
-                antenna1_indices.ctypes.data,
-                v1_m2i_v2.size)
-    sum_grads_c(grad.ctypes.data, v1_m2r_v2.ctypes.data, v1_m2i_v2.ctypes.data,
-                antenna2_indices.ctypes.data,
-                v1_m2i_v2.size)
+    wrapper.sum_grads_c(
+        grad.ctypes.data,
+        v1_m1r_v2.ctypes.data,
+        v1_m1i_v2.ctypes.data,
+        antenna1_indices.ctypes.data,
+        v1_m2i_v2.size
+    )
+    wrapper.sum_grads_c(
+        grad.ctypes.data,
+        v1_m2r_v2.ctypes.data,
+        v1_m2i_v2.ctypes.data,
+        antenna2_indices.ctypes.data,
+        v1_m2i_v2.size
+    )
     if do_code_timing:
         t2 = time.time()
         print((t2 - t1))
@@ -563,7 +625,7 @@ def chol(mat):
         None
     """
     n = mat.shape[0]
-    cholesky_factorization(mat.ctypes.data, n)
+    wrapper.cholesky_factorization(mat.ctypes.data, n)
 
 
 def many_chol(mat):
@@ -584,7 +646,7 @@ def many_chol(mat):
 
     nmat = mat.shape[0]
     n = mat.shape[1]
-    cholesky_factorization_parallel(mat.ctypes.data, n, nmat)
+    wrapper.cholesky_factorization_parallel(mat.ctypes.data, n, nmat)
 
 
 def tri_inv(mat):
@@ -605,7 +667,7 @@ def tri_inv(mat):
     """
     n = mat.shape[0]
     mat_inv = 0 * mat
-    tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, n)
+    wrapper.tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, n)
     return mat_inv
 
 
@@ -632,12 +694,12 @@ def many_tri_inv(mat):
 
     # if only one matrix comes in, do the correct thing
     if len(sz) == 2:
-        tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, sz[0])
+        wrapper.tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, sz[0])
         return mat_inv
 
     nmat = mat.shape[0]
     n = mat.shape[1]
-    many_tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, n, nmat)
+    wrapper.many_tri_inv_c(mat.ctypes.data, mat_inv.ctypes.data, n, nmat)
     return mat_inv
 
 
@@ -768,7 +830,9 @@ def mymatmul(a, b):
     m = b.shape[1]
     c = np.zeros([n, m])
 
-    mymatmul_c(a.ctypes.data, k, b.ctypes.data, m, n, m, k, c.ctypes.data, m)
+    wrapper.mymatmul_c(
+        a.ctypes.data, k, b.ctypes.data, m, n, m, k, c.ctypes.data, m
+    )
     return c
 
 
@@ -779,8 +843,10 @@ def mult_vecs_by_blocks(vecs, blocks, edges):
     ans = np.zeros([nvec, n])
     if edges.dtype.name != 'int64':
         edges.np.asarray(edges, dtype='int64')
-    mult_vecs_by_blocs_c(vecs.ctypes.data, blocks.ctypes.data, n, nvec, nblock,
-                         edges.ctypes.data, ans.ctypes.data)
+    wrapper.mult_vecs_by_blocs_c(
+        vecs.ctypes.data, blocks.ctypes.data, n, nvec, nblock,
+        edges.ctypes.data, ans.ctypes.data
+    )
     return ans
 
 
