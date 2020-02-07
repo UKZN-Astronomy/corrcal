@@ -5,7 +5,7 @@ from scipy.optimize import fmin_cg
 from matplotlib import pyplot as plt
 
 import corrcal
-from corrcal.data import DATA_PATH
+from corrcal import DATA_PATH
 
 
 # scipy nonlinear conjugate gradient seems to work pretty well.
