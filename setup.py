@@ -20,14 +20,15 @@ setup(
     setup_requires=['setuptools_scm'],
     python_requires='>=3.7',
     install_requires=['numpy'],
-    packages=find_packages("src"),
-    package_dir={"": "src"},
+    # Set main package directory to `src`
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
     include_package_data=True,
-    # package_data={
-    #     Include any *.dat files found in the 'data' subdirectory
-    #     of the 'corrcal' package:
-    #     'corrcal': ['data/*.dat'],
-    # },
+    package_data={
+        # Include any *.dat files found in the 'data' subdirectory
+        # of the main package directory:
+        '': ['data/*.dat'],
+    },
     ext_modules=[
         Extension(
             'corrcal.c_corrcal',
