@@ -11,7 +11,6 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/UKZN-Astronomy/corrcal",
-    packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: BSD 2-Clause License",
@@ -21,17 +20,21 @@ setup(
     setup_requires=['setuptools_scm'],
     python_requires='>=3.7',
     install_requires=['numpy'],
+    # Set main package directory to `src`
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
+    include_package_data=True,
     package_data={
         # Include any *.dat files found in the 'data' subdirectory
-        # of the 'corrcal' package:
-        'corrcal': ['data/*.dat'],
+        # of the main package directory:
+        '': ['data/*.dat'],
     },
     ext_modules=[
         Extension(
             'corrcal.c_corrcal',
-            sources=['corrcal/src/corrcal_c_funcs.c'],
+            sources=['src/corrcal/src/corrcal_c_funcs.c'],
             extra_compile_args=['-std=c99', '-fopenmp'],
-            include_dirs=['corrcal/src'],
+            include_dirs=['src/corrcal/src'],
         )
     ]
 )
