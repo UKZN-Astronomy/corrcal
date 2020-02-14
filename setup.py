@@ -33,7 +33,7 @@ setup(
         Extension(
             'corrcal.c_corrcal',
             sources=['src/corrcal/src/corrcal_c_funcs.c'],
-            extra_compile_args=['-std=c99', '-fopenmp'],
+            extra_compile_args=['-fopenmp'],
             include_dirs=['src/corrcal/src'],
         )
     ]
